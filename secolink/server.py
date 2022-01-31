@@ -56,15 +56,15 @@ class Server(socketserver.ThreadingTCPServer):
     def publish_attributes(self, attributes: dict = None) -> None:
         if attributes is not None:
             self.mqtt_attributes = {**self.mqtt_attributes, **attributes}
-        self.mqttc.publish('{0}/attributes'.format(self.mqtt_topic), payload=json.dumps(self.mqtt_attributes))
+        self.mqttc.publish('{0}/attributes'.format(self.mqtt_topic), payload=json.dumps(self.mqtt_attributes), retain=True)
 
     def publish_state(self, state: str = None) -> None:
         if state is not None:
             self.mqttc.publish('{0}/state'.format(self.mqtt_topic), payload=state, retain=True)
 
-    def publish_mqtt(self, payload: str, suffix: str) -> None:
+    def publish_mqtt(self, payload: str, suffix: str, retain: bool = False) -> None:
         if payload is not None and suffix is not None:
-            self.mqttc.publish('{0}/{1}'.format(self.mqtt_topic, suffix), payload=payload, retain=True)
+            self.mqttc.publish('{0}/{1}'.format(self.mqtt_topic, suffix), payload=payload, retain=retain)
 
     def verify_request(self, request: bytes, client_address: Tuple[str, int]) -> bool:        
         request_verified = len(self.clients) <= 10                
