@@ -45,6 +45,11 @@ class Server(socketserver.ThreadingTCPServer):
         else:
             mqtt_logger.error('Connection error')
 
+    def mqtt_on_disconnect(self, client: mqtt.Client, userdata, rc: int) -> None:
+        if rc != 0:
+            logger.error('MQTT client disconnected with code {}, reconnecting'.format(rc))
+            client.reconnect()
+
     def mqtt_on_message(self, client: mqtt.Client, userdata, msg) -> None:
         command = msg.payload.decode('utf-8')
         if not command:
@@ -89,6 +94,7 @@ class Server(socketserver.ThreadingTCPServer):
         self.mqttc.reconnect_delay_set(min_delay=1, max_delay=120)
         self.mqttc.will_set('{0}/availability'.format(self.mqtt_topic), payload='offline', retain=True)
         self.mqttc.on_connect = self.mqtt_on_connect
+        self.mqttc.on_disconnect = self.mqtt_on_disconnect
         self.mqttc.on_message = self.mqtt_on_message
 
         username = self.config.get('mqtt', 'username', fallback=None)
