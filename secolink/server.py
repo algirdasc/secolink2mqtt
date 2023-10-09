@@ -28,27 +28,20 @@ class Server(socketserver.ThreadingTCPServer):
     }
 
     def mqtt_on_connect(self, client: mqtt.Client, userdata, msg, rc: int) -> None:
-        if rc == 0:
+        if rc == mqtt.MQTT_ERR_SUCCESS:
             client.publish('{0}/availability'.format(self.mqtt_topic), payload='online', retain=True)
             client.subscribe('{0}/set'.format(self.mqtt_topic))
             self.publish_attributes()
-        elif rc == 1:
-            mqtt_logger.error('Connection refused - incorrect protocol version')
-        elif rc == 2:
-            mqtt_logger.error('Connection refused - invalid client identifier')
-        elif rc == 3:
-            mqtt_logger.error('Connection refused - server unavailable')
-        elif rc == 4:
-            mqtt_logger.error('Connection refused - bad username or password')
-        elif rc == 5:
-            mqtt_logger.error('Connection refused - not authorised')
         else:
-            mqtt_logger.error('Connection error')
+            mqtt_logger.error('Connection error: {}'.format(mqtt.error_string(rc)))
 
     def mqtt_on_disconnect(self, client: mqtt.Client, userdata, rc: int) -> None:
-        if rc != 0:
-            logger.error('MQTT client disconnected with code {}, reconnecting'.format(rc))
-            client.reconnect()
+        if rc != mqtt.MQTT_ERR_SUCCESS:
+            mqtt_logger.error('Disconnected with code {}, reconnecting'.format(rc))
+            try:
+                client.reconnect()
+            except Exception as e:
+                mqtt_logger.exception(e)
 
     def mqtt_on_message(self, client: mqtt.Client, userdata, msg) -> None:
         command = msg.payload.decode('utf-8')
@@ -78,7 +71,10 @@ class Server(socketserver.ThreadingTCPServer):
         return request_verified
 
     def service_actions(self) -> None:
-        self.mqttc.loop()
+        rc = self.mqttc.loop()
+        if rc != mqtt.MQTT_ERR_SUCCESS:
+            self.mqtt_on_disconnect(self.mqttc, {}, rc)
+
         return super().service_actions()
 
     def server_bind(self) -> None:
