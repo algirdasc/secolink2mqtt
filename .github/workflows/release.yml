@@ -1,0 +1,35 @@
+name: release
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+  packages: write
+concurrency: release
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Next version (patch bump of latest v* tag)
+        id: v
+        run: |
+          last=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          IFS=. read -r a b c <<< "${last:-v1.0.-1}"
+          echo "version=${a#v}.$b.$((c+1))" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.v.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest
+      - name: Tag release
+        run: |
+          git tag "v${{ steps.v.outputs.version }}"
+          git push origin "v${{ steps.v.outputs.version }}"
