@@ -18,6 +18,8 @@ jobs:
           last=$(git tag -l 'v*' --sort=-v:refname | head -1)
           IFS=. read -r a b c <<< "${last:-v1.0.-1}"
           echo "version=${a#v}.$b.$((c+1))" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -26,6 +28,7 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           push: true
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.v.outputs.version }}
             ghcr.io/${{ github.repository }}:latest
