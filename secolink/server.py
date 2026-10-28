@@ -18,6 +18,7 @@ class Server(socketserver.ThreadingTCPServer):
     acc_prefix: str
     acc_number: str
     mqtt_topic: str
+    mqtt_state: str = None
     command_queue: list = []
     clients: set
     mqtt_attributes: dict = {
@@ -32,6 +33,7 @@ class Server(socketserver.ThreadingTCPServer):
             client.publish('{0}/availability'.format(self.mqtt_topic), payload='online', retain=True)
             client.subscribe('{0}/set'.format(self.mqtt_topic))
             self.publish_attributes()
+            self.publish_state()
         else:
             mqtt_logger.error('Connection error: {}'.format(mqtt.error_string(rc)))
 
@@ -58,7 +60,9 @@ class Server(socketserver.ThreadingTCPServer):
 
     def publish_state(self, state: str = None) -> None:
         if state is not None:
-            self.mqttc.publish('{0}/state'.format(self.mqtt_topic), payload=state, retain=True)
+            self.mqtt_state = state
+        if self.mqtt_state is not None:
+            self.mqttc.publish('{0}/state'.format(self.mqtt_topic), payload=self.mqtt_state, retain=True)
 
     def publish_mqtt(self, payload: str, suffix: str, retain: bool = False) -> None:
         if payload is not None and suffix is not None:
