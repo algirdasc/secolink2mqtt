@@ -1,0 +1,10 @@
+services:
+  secolink2mqtt:
+    image: ghcr.io/algirdasc/secolink2mqtt:latest
+    container_name: secolink2mqtt
+    restart: unless-stopped
+    ports:
+      - "8130:8130"
+    volumes:
+      - ./config.ini:/usr/src/app/config.ini:ro
+      - ./log:/usr/src/app/log
